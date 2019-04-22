@@ -1,0 +1,63 @@
+cluster:
+  description: >
+    This describes a Neptune cluster to be deployed into your environment.
+  type: object
+  additionalProperties: false
+  properties:
+    name:
+      description: >
+        Optional specification of the cluster name and its associated resources.  Defaults to the project name + environment
+      type: string
+      minLength: 1
+
+    type:
+      description: >
+        The EC2 instance class for use within the Neptune cluster.  Defaults to db.r4.large, the smallest instance class.
+      type: string
+      enum:
+        - "db.r4.large"
+        - "db.r4.xlarge"
+        - "db.r4.2xlarge"
+        - "db.r4.4xlarge"
+        - "db.r4.8xlarge"
+
+    replicaCount:
+      description: >
+        Optional specification of the number of read replica instances in the cluster.  There is one primary instance with a write endpoint and up to 15 replicas to provide read concurrency.  Replicas are staggered so half end up in availability zone 1 and half in zone 2.  Neptune clusters automatically handles failover cases.  This value defaults to 0.
+      type: integer
+      minimum: 0
+      maximum: 15
+
+    backupTTL:
+      description: >
+        Optional specification of how long to hold onto database snapshots, given in days.  Defaults to 1 day.
+      type: integer
+      minimum: 1
+
+    backupWindow:
+      description: >
+        Optional specification of the window of time where a database backup can be made.  Given in UTC in the format hh:mm-hh:mm. Cannot overlap with maintenanceWindow. Defaults to 06:00-07:00, which is 11pm - 12am PST.  Zone 2 instances are staggered one hour afterward.
+      type: string
+      minLength: 1
+
+    maintenanceWindow:
+      description: >
+        Optional specification of the window of time where system maintenance may occur, including version upgrades.  Given in UTC in the format ddd:hh:mm-ddd:hh:mm.  Cannot overlap with backupWindow.  Defaults to "Wed:07:00-Wed:08:00", which is 12am - 1am PST Wednesday mornings.  Zone 2 instances are staggered one hour afterward.
+      type: string
+      minLength: 1
+
+    allowMajorUpgrades:
+      description: >
+        Optional specification to allow major Neptune engine upgrades on your instances. Defaults to false.
+      type: boolean
+
+    allowMinorUpgrades:
+      description: >
+        Optional specification to allow minor Neptune engine upgrades on your instances. Defaults to true.
+      type: boolean
+
+    kmsKey:
+      description: >
+        Optional specification of the KMS key to use to encrypt data at rest.  Neptune uses KMS to encrypt/decrypt data with minimal performance impact.  This mixin does not create a KMS key for you and will throw an error if it cannot find the key.  Omitting this field will leave your data unencrypted at rest.
+      type: string
+      minLength: 1

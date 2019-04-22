@@ -1,0 +1,86 @@
+NeptuneClusterSubnet:
+  Type: "AWS::Neptune::DBSubnetGroup"
+  Properties:
+    DBSubnetGroupDescription: Subnets for the {{cluster.name}} cluster
+    DBSubnetGroupName: {{cluster.name}}
+    SubnetIds:
+      "Fn::Split": [",", {"Ref": Subnets}]
+    Tags:
+      {{#each tags}}
+      - Key: {{Key}}
+        Value: {{Value}}
+      {{/each}}
+
+NeptuneCluster:
+  DependsOn:
+    - NeptuneClusterSubnet
+  Type: "AWS::Neptune::DBCluster"
+  Properties:
+    DBClusterIdentifier: {{cluster.name}}
+    AvailabilityZones:
+      "Fn::Split": [",", {"Ref": AvailabilityZones}]
+    VpcSecurityGroupIds:
+      "Fn::Split": [",", {"Ref": SecurityGroups}]
+    DBSubnetGroupName: {{cluster.name}}
+    PreferredBackupWindow: {{cluster.backupWindow}}
+    PreferredMaintenanceWindow: {{cluster.maintenanceWindow}}
+    BackupRetentionPeriod: {{cluster.backupTTL}}
+    Port: 8182
+    IamAuthEnabled: false
+    {{#if cluster.kmsKey}}
+    KmsKeyId: {{cluster.kmsKey}}
+    StorageEncrypted: true
+    {{/if}}
+    {{#unless cluster.kmsKey}}
+    StorageEncrypted: false
+    {{/unless}}
+    Tags:
+      {{#each tags}}
+      - Key: {{Key}}
+        Value: {{Value}}
+      {{/each}}
+
+NeptuneInstance:
+  DependsOn:
+    - NeptuneCluster
+    - NeptuneClusterSubnet
+  Type: "AWS::Neptune::DBInstance"
+  Properties:
+    AllowMajorVersionUpgrade: false
+    AutoMinorVersionUpgrade: true
+    AvailabilityZone:
+      "Fn::Select": [0, "Fn::Split": [",", {"Ref": AvailabilityZones}]]
+    DBClusterIdentifier: {{cluster.name}}
+    DBInstanceClass: {{cluster.type}}
+    DBInstanceIdentifier: {{cluster.name}}-main
+    DBSubnetGroupName: {{cluster.name}}
+    PreferredMaintenanceWindow: {{cluster.maintenanceWindow}}
+    Tags:
+      {{#each tags}}
+      - Key: {{Key}}
+        Value: {{Value}}
+      {{/each}}
+
+{{#each replicas}}
+NeptuneInstanceReplica{{@index}}:
+  DependsOn:
+    - NeptuneCluster
+    - NeptuneClusterSubnet
+    - NeptuneInstance
+  Type: "AWS::Neptune::DBInstance"
+  Properties:
+    AllowMajorVersionUpgrade: false
+    AutoMinorVersionUpgrade: true
+    AvailabilityZone:
+      "Fn::Select": {{availabilityZone}}
+    DBClusterIdentifier: {{@root.cluster.name}}
+    DBInstanceClass: {{@root.cluster.type}}
+    DBInstanceIdentifier: {{@root.cluster.name}}-replica-{{@index}}
+    DBSubnetGroupName: {{@root.cluster.name}}
+    PreferredMaintenanceWindow: {{maintenanceWindow}}
+    Tags:
+      {{#each @root.tags}}
+      - Key: {{Key}}
+        Value: {{Value}}
+      {{/each}}
+{{/each}}
